@@ -1,9 +1,20 @@
 import { io } from 'socket.io-client';
 
 const API_URL =
-  import.meta.env.VITE_API_URL ??
-  'http://localhost:9025';
+  import.meta.env.VITE_API_URL;
 
-export const socket = io(API_URL, {
-  transports: ['websocket', 'polling'],
-});
+console.log(
+  'VITE_API_URL =',
+  API_URL,
+);
+
+export const socket = io(
+  API_URL ||
+    'http://localhost:9025',
+  {
+    transports: [
+      'websocket',
+      'polling',
+    ],
+  },
+);
