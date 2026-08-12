@@ -43,29 +43,32 @@ export default function AvatarModal({
   return (
     <div
       className="
-        fixed
-        inset-0
-        z-50
-        flex
-        items-center
-        justify-center
-        bg-black/70
-        p-6
-        backdrop-blur-sm
+    fixed
+    inset-0
+    z-50
+    flex
+    items-center
+    justify-center
+    bg-black/70
+    p-6
+    backdrop-blur-sm
       "
     >
-      <div
-        className="
-          w-full
-          max-w-xl
-          rounded-3xl
-          border
-          border-[#9b5cff]/50
-          bg-[#11131f]/95
-          p-7
-          shadow-2xl
-        "
-      >
+<div
+  className="
+    w-full
+    max-w-5xl
+    max-h-[95vh]
+    overflow-y-auto
+    rounded-3xl
+    border
+    border-[#9b5cff]/50
+    bg-[#11131f]/95
+    p-7
+    shadow-2xl
+    pointer-events-auto
+  "
+>
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#8d91a5]">

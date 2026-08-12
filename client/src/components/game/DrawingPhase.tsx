@@ -4,7 +4,7 @@ import {
   useState,
 } from 'react';
 
-import DrawingCanvas from './DrawingCanvas';
+import DrawingCanvas from '../game/canvas/DrawingCanvas';
 import GameTimer from './GameTimer';
 import WordDisplay from './WordDisplay';
 import GameRuleBadge from './GameRuleBadge';
