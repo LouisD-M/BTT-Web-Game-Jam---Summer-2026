@@ -1,124 +1,211 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { socket } from "../socket/socket";
-import type { Lobby } from "../types/lobby";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import { socket } from '../socket/socket';
+
+import type { Lobby } from '../types/lobby';
+
 import HomeForm from '../components/home/HomeForm';
 
 export default function HomePage() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const [nickname, setNickname] = useState("");
-  const [lobbyCode, setLobbyCode] = useState("");
-  const [error, setError] = useState("");
+  const [
+    nickname,
+    setNickname,
+  ] =
+    useState('');
+
+  const [
+    lobbyCode,
+    setLobbyCode,
+  ] =
+    useState('');
+
+  const [
+    error,
+    setError,
+  ] =
+    useState('');
 
   useEffect(() => {
-    const handleConnect = () => {
-      console.log("Socket connecté :", socket.id);
+    const handleLobbyCreated = (
+      lobby: Lobby,
+    ) => {
+      navigate(
+        `/lobby/${lobby.code}`,
+      );
     };
 
-    const handleDisconnect = () => {
-      console.log("Socket déconnecté");
+    const handleLobbyUpdate = (
+      lobby: Lobby,
+    ) => {
+      navigate(
+        `/lobby/${lobby.code}`,
+      );
     };
 
-    const handleLobbyCreated = (lobby: Lobby) => {
-      console.log("Lobby créé :", lobby);
+    const handleLobbyError = (
+      data: {
+        message: string;
+      },
+    ) => {
+      console.error(
+        'Erreur lobby :',
+        data.message,
+      );
 
-      navigate(`/lobby/${lobby.code}`);
+      setError(
+        data.message,
+      );
     };
 
-    const handleLobbyUpdate = (lobby: Lobby) => {
-      console.log("Lobby rejoint :", lobby);
+    socket.on(
+      'lobby:created',
+      handleLobbyCreated,
+    );
 
-      navigate(`/lobby/${lobby.code}`);
-    };
+    socket.on(
+      'lobby:update',
+      handleLobbyUpdate,
+    );
 
-    const handleLobbyError = (data: { message: string }) => {
-      console.error("Erreur lobby :", data.message);
-
-      setError(data.message);
-    };
-
-    socket.on("connect", handleConnect);
-    socket.on("disconnect", handleDisconnect);
-    socket.on("lobby:created", handleLobbyCreated);
-    socket.on("lobby:update", handleLobbyUpdate);
-    socket.on("lobby:error", handleLobbyError);
+    socket.on(
+      'lobby:error',
+      handleLobbyError,
+    );
 
     return () => {
-      socket.off("connect", handleConnect);
-      socket.off("disconnect", handleDisconnect);
-      socket.off("lobby:created", handleLobbyCreated);
-      socket.off("lobby:update", handleLobbyUpdate);
-      socket.off("lobby:error", handleLobbyError);
+      socket.off(
+        'lobby:created',
+        handleLobbyCreated,
+      );
+
+      socket.off(
+        'lobby:update',
+        handleLobbyUpdate,
+      );
+
+      socket.off(
+        'lobby:error',
+        handleLobbyError,
+      );
     };
-  }, [navigate]);
+  }, [
+    navigate,
+  ]);
 
   const createLobby = () => {
-    if (!nickname.trim()) {
-      setError("Entre un pseudo");
+    const cleanNickname =
+      nickname.trim();
+
+    if (!cleanNickname) {
+      setError(
+        'Entre un pseudo',
+      );
+
       return;
     }
 
-    console.log("Création lobby...");
-    console.log("Socket connecté ?", socket.connected);
-    console.log("Socket ID :", socket.id);
+    setError('');
 
     localStorage.setItem(
-      "nickname",
-      nickname.trim(),
+      'nickname',
+      cleanNickname,
     );
 
-    socket.emit("lobby:create", {
-      nickname: nickname.trim(),
-    });
+    socket.emit(
+      'lobby:create',
+      {
+        nickname:
+          cleanNickname,
+      },
+    );
   };
 
   const joinLobby = () => {
-    if (!nickname.trim()) {
-      setError("Entre un pseudo");
+    const cleanNickname =
+      nickname.trim();
+
+    const cleanLobbyCode =
+      lobbyCode
+        .trim()
+        .toUpperCase();
+
+    if (!cleanNickname) {
+      setError(
+        'Entre un pseudo',
+      );
+
       return;
     }
 
-    if (!lobbyCode.trim()) {
-      setError("Entre le code du lobby");
+    if (!cleanLobbyCode) {
+      setError(
+        'Entre le code du lobby',
+      );
+
       return;
     }
+
+    setError('');
 
     localStorage.setItem(
-      "nickname",
-      nickname.trim(),
+      'nickname',
+      cleanNickname,
     );
 
-    socket.emit("lobby:join", {
-      code: lobbyCode.trim().toUpperCase(),
-      nickname: nickname.trim(),
-    });
+    socket.emit(
+      'lobby:join',
+      {
+        code:
+          cleanLobbyCode,
+
+        nickname:
+          cleanNickname,
+      },
+    );
   };
 
   return (
-<main
-  className="
-    flex
-    min-h-screen
-    w-full
-    items-center
-    justify-center
-    bg-[url('/bg_homepage.png')]
-    bg-cover
-    bg-center
-    bg-no-repeat
-    p-6
-  "
->
-  <HomeForm
-    nickname={nickname}
-    setNickname={setNickname}
-    lobbyCode={lobbyCode}
-    setLobbyCode={setLobbyCode}
-    createLobby={createLobby}
-    joinLobby={joinLobby}
-    error={error}
-  />
-</main>
+    <main
+      className="
+        flex
+        min-h-screen
+        w-full
+        items-center
+        justify-center
+        bg-[url('/bg_homepage.png')]
+        bg-cover
+        bg-center
+        bg-no-repeat
+        p-6
+      "
+    >
+      <HomeForm
+        nickname={
+          nickname
+        }
+        setNickname={
+          setNickname
+        }
+        lobbyCode={
+          lobbyCode
+        }
+        setLobbyCode={
+          setLobbyCode
+        }
+        createLobby={
+          createLobby
+        }
+        joinLobby={
+          joinLobby
+        }
+        error={
+          error
+        }
+      />
+    </main>
   );
 }

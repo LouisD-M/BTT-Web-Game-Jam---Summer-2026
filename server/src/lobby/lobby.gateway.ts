@@ -21,7 +21,11 @@ import { LobbyService } from './lobby.service';
 import { WORD_PAIRS } from '../game/word-pairs';
 @WebSocketGateway({
   cors: {
-    origin: 'http://localhost:5173',
+    origin: [
+      'http://localhost:5173',
+      process.env.FRONTEND_URL ??
+        'http://localhost:5173',
+    ],
     credentials: true,
   },
 })
@@ -59,19 +63,13 @@ export class LobbyGateway
   handleConnection(
     socket: Socket,
   ) {
-    console.log(
-      'Socket connecté :',
-      socket.id,
-    );
+
   }
 
   handleDisconnect(
     socket: Socket,
   ) {
-    console.log(
-      'Socket déconnecté :',
-      socket.id,
-    );
+
 
     const lobby =
       this.lobbyService.removePlayer(
@@ -788,9 +786,6 @@ lobby.currentModifier =
   lobby.impostorWord =
     randomPair.impostor;
 
-  console.log(
-    `[${code}] Manche ${roundNumber} → DRAWING | ${lobby.currentModifier} | ${drawingDuration}s`,
-  );
 
   this.server
     .to(code)
@@ -869,9 +864,7 @@ lobby.currentModifier =
         return;
       }
 
-      console.log(
-        `[${code}] Fin dessin manche ${roundNumber}`,
-      );
+
 
       this.startReview(
         code,
@@ -937,9 +930,7 @@ lobby.currentModifier =
         }),
       );
 
-    console.log(
-      `[${code}] Manche ${roundNumber} → REVIEW`,
-    );
+
 
     this.server
       .to(code)
@@ -993,9 +984,7 @@ lobby.currentModifier =
           return;
         }
 
-        console.log(
-          `[${code}] Manche ${roundNumber} REVIEW → VOTING`,
-        );
+
 
         this.startVoting(
           code,
@@ -1062,9 +1051,7 @@ lobby.currentModifier =
         }),
       );
 
-    console.log(
-      `[${code}] Manche ${roundNumber} → VOTING`,
-    );
+
 
     /*
      * 60 SECONDES POUR VOTER.
@@ -1122,9 +1109,7 @@ lobby.currentModifier =
           return;
         }
 
-        console.log(
-          `[${code}] Fin vote manche ${roundNumber}`,
-        );
+
 
         this.finishRound(
           code,
@@ -1280,9 +1265,7 @@ if (
         }),
       );
 
-    console.log(
-      `[${code}] Manche ${roundNumber} → RESULTS`,
-    );
+
 
     this.server
       .to(code)

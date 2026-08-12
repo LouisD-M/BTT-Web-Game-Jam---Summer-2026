@@ -27,9 +27,7 @@ async function bootstrap() {
     '0.0.0.0',
   );
 
-  console.log(
-    `API running on port ${port}`,
-  );
+
 }
 
 bootstrap();
