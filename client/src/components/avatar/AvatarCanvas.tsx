@@ -8,15 +8,15 @@ import type {
   MouseEvent as ReactMouseEvent,
 } from 'react';
 
-type DrawingCanvasProps = {
+type AvatarCanvasProps = {
   onCanvasReady: (
     getImage: () => string,
   ) => void;
 };
 
-export default function DrawingCanvas({
+export default function AvatarCanvas({
   onCanvasReady,
-}: DrawingCanvasProps) {
+}: AvatarCanvasProps) {
   const canvasRef =
     useRef<HTMLCanvasElement | null>(null);
 
@@ -44,8 +44,8 @@ export default function DrawingCanvas({
 
     context.lineCap = 'round';
     context.lineJoin = 'round';
-    context.lineWidth = 5;
-    context.strokeStyle = 'black';
+    context.lineWidth = 6;
+    context.strokeStyle = '#111111';
 
     onCanvasReady(() =>
       canvas.toDataURL('image/png'),
@@ -155,26 +155,29 @@ export default function DrawingCanvas({
     <div className="w-full">
       <div
         className="
+          mx-auto
+          aspect-square
+          w-full
+          max-w-sm
           overflow-hidden
           rounded-3xl
           border-4
           border-[#9b5cff]/50
           bg-white
           shadow-2xl
-          shadow-black/40
         "
       >
         <canvas
           ref={canvasRef}
-          width={1200}
-          height={700}
+          width={500}
+          height={500}
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
           onMouseLeave={stopDrawing}
           className="
             block
-            aspect-[12/7]
+            h-full
             w-full
             cursor-crosshair
             bg-white
@@ -182,7 +185,7 @@ export default function DrawingCanvas({
         />
       </div>
 
-      <div className="mt-3 flex justify-end">
+      <div className="mt-4 flex justify-center">
         <button
           type="button"
           onClick={clearCanvas}
@@ -190,21 +193,18 @@ export default function DrawingCanvas({
             rounded-xl
             border
             border-white/10
-            bg-[#11131f]/90
-            px-5
-            py-2.5
+            bg-white/5
+            px-4
+            py-2
             text-sm
             font-semibold
             text-[#c7c9d8]
-            shadow-lg
-            backdrop-blur-md
             transition
-            hover:border-[#ff6b8a]/50
-            hover:bg-[#ff6b8a]/10
-            hover:text-[#ff9aad]
+            hover:bg-white/10
+            hover:text-white
           "
         >
-          Effacer le dessin
+          Effacer
         </button>
       </div>
     </div>

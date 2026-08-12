@@ -7,10 +7,12 @@ export type Player = {
   id: string;
   nickname: string;
   isHost: boolean;
-
   drawingFinished: boolean;
-  voteFor?: string;
+  score: number;
+  avatar?: string;
 };
+
+
 
 export type Lobby = {
   code: string;

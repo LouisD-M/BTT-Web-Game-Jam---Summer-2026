@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { socket } from "../socket/socket";
 import type { Lobby } from "../types/lobby";
+import HomeForm from '../components/home/HomeForm';
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -95,52 +96,29 @@ export default function HomePage() {
   };
 
   return (
-    <main>
-      <h1>Draw Impostor</h1>
-
-      <div>
-        <label htmlFor="nickname">
-          Pseudo
-        </label>
-
-        <input
-          id="nickname"
-          value={nickname}
-          onChange={(event) =>
-            setNickname(event.target.value)
-          }
-          placeholder="Louis"
-        />
-      </div>
-
-      <button onClick={createLobby}>
-        Créer un lobby
-      </button>
-
-      <hr />
-
-      <div>
-        <label htmlFor="lobbyCode">
-          Code du lobby
-        </label>
-
-        <input
-          id="lobbyCode"
-          value={lobbyCode}
-          onChange={(event) =>
-            setLobbyCode(
-              event.target.value.toUpperCase(),
-            )
-          }
-          placeholder="ABC123"
-        />
-      </div>
-
-      <button onClick={joinLobby}>
-        Rejoindre le lobby
-      </button>
-
-      {error && <p>{error}</p>}
-    </main>
+<main
+  className="
+    flex
+    min-h-screen
+    w-full
+    items-center
+    justify-center
+    bg-[url('/bg_homepage.png')]
+    bg-cover
+    bg-center
+    bg-no-repeat
+    p-6
+  "
+>
+  <HomeForm
+    nickname={nickname}
+    setNickname={setNickname}
+    lobbyCode={lobbyCode}
+    setLobbyCode={setLobbyCode}
+    createLobby={createLobby}
+    joinLobby={joinLobby}
+    error={error}
+  />
+</main>
   );
 }

@@ -7,11 +7,7 @@ import {
   useParams,
 } from 'react-router-dom';
 
-import DrawingPhase from '../components/game/DrawingPhase';
-import ReviewPhase from '../components/game/ReviewPhase';
-import VotingPhase from '../components/game/VotingPhase';
-import ResultsPhase from '../components/game/ResultsPhase';
-import FinalRanking from '../components/game/FinalRanking';
+import GameContent from '../components/game/GameContent';
 
 import { socket } from '../socket/socket';
 
@@ -25,23 +21,27 @@ type GamePhase =
 type Player = {
   id: string;
   nickname: string;
+  avatar?: string;
 };
 
 type ScorePlayer = {
   id: string;
   nickname: string;
+  avatar?: string;
   score: number;
 };
 
 type Drawing = {
   id: string;
   nickname: string;
+  avatar?: string;
   drawing: string | null;
 };
 
 type PlayerWord = {
   id: string;
   nickname: string;
+  avatar?: string;
   word: string;
   isImpostor: boolean;
   score?: number;
@@ -253,6 +253,10 @@ export default function GamePage() {
       handleGameFinished,
     );
 
+    socket.emit('game:get-state', {
+     code: id,
+    });
+
     return () => {
       socket.off(
         'round:started',
@@ -294,73 +298,35 @@ export default function GamePage() {
     );
   }
 
-  return (
-    <main>
-      {phase !==
-        'finished' && (
-        <header>
-          <h1>
-            Draw Impostor
-          </h1>
+return (
+  <main
+    className="
+      relative
+      min-h-screen
+      w-full
+      bg-[url('/bg_game.png')]
+      bg-cover
+      bg-center
+      bg-no-repeat
+      p-6
+    "
+  >
+    <div className="absolute inset-0 bg-black/20" />
 
-          <p>
-            Manche {round}
-            {' / '}
-            {totalRounds}
-          </p>
-        </header>
-      )}
-
-      {phase ===
-        'drawing' && (
-        <DrawingPhase
-          lobbyCode={id}
-          word={word}
-          rule={rule}
-        />
-      )}
-
-      {phase ===
-        'review' && (
-        <ReviewPhase
-          drawings={
-            drawings
-          }
-        />
-      )}
-
-      {phase ===
-        'voting' && (
-        <VotingPhase
-          lobbyCode={id}
-          players={
-            players
-          }
-          drawings={
-            drawings
-          }
-        />
-      )}
-
-      {phase ===
-          'results' &&
-        results && (
-          <ResultsPhase
-            results={
-              results
-            }
-          />
-        )}
-
-      {phase ===
-        'finished' && (
-        <FinalRanking
-          scores={
-            finalScores
-          }
-          lobbyCode={id}
-        />
-      )}
-    </main>
-  );
+    <div className="relative z-10">
+      <GameContent
+        phase={phase}
+        lobbyCode={id}
+        round={round}
+        totalRounds={totalRounds}
+        word={word}
+        rule={rule}
+        players={players}
+        drawings={drawings}
+        results={results}
+        finalScores={finalScores}
+      />
+    </div>
+  </main>
+);
 }

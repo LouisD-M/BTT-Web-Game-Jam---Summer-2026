@@ -159,6 +159,50 @@ export class LobbyGateway
       );
   }
 
+  @SubscribeMessage('avatar:update')
+handleAvatarUpdate(
+  @ConnectedSocket()
+  socket: Socket,
+
+  @MessageBody()
+  data: {
+    code: string;
+    avatar: string;
+  },
+) {
+  const code =
+    data.code.toUpperCase();
+
+  const lobby =
+    this.lobbyService.getLobby(
+      code,
+    );
+
+  if (!lobby) {
+    return;
+  }
+
+  const player =
+    lobby.players.find(
+      (player) =>
+        player.id === socket.id,
+    );
+
+  if (!player) {
+    return;
+  }
+
+  player.avatar =
+    data.avatar;
+
+  this.server
+    .to(code)
+    .emit(
+      'lobby:update',
+      lobby,
+    );
+}
+
   @SubscribeMessage('lobby:get')
   handleGetLobby(
     @ConnectedSocket()
@@ -510,6 +554,80 @@ export class LobbyGateway
     }
   }
 
+// =====================================================
+// GET CURRENT GAME STATE
+// =====================================================
+
+@SubscribeMessage('game:get-state')
+handleGetGameState(
+  @ConnectedSocket()
+  socket: Socket,
+
+  @MessageBody()
+  data: {
+    code: string;
+  },
+) {
+  const code =
+    data.code.toUpperCase();
+
+  const lobby =
+    this.lobbyService.getLobby(
+      code,
+    );
+
+  if (!lobby) {
+    return;
+  }
+
+  if (lobby.state !== 'playing') {
+    return;
+  }
+
+  const player =
+    lobby.players.find(
+      (player) =>
+        player.id === socket.id,
+    );
+
+  if (!player) {
+    return;
+  }
+
+  // On resynchronise les infos
+  // de la manche actuelle.
+  socket.emit(
+    'round:started',
+    {
+      round: lobby.round,
+      totalRounds:
+        lobby.totalRounds,
+      duration: 30,
+    },
+  );
+
+  // Si nous sommes encore
+  // dans la phase dessin,
+  // on renvoie le mot secret.
+  if (
+    lobby.phase === 'drawing'
+  ) {
+    const word =
+      player.id ===
+      lobby.impostorId
+        ? lobby.impostorWord
+        : lobby.normalWord;
+
+    socket.emit(
+      'round:word',
+      {
+        word,
+        rule: 'Normal',
+      },
+    );
+  }
+}
+
   // =====================================================
   // START ROUND
   // =====================================================
@@ -739,6 +857,7 @@ lobby.impostorWord =
 
           nickname:
             player.nickname,
+        avatar: player.avatar,
 
           drawing:
             player.drawing ??
@@ -863,6 +982,7 @@ lobby.impostorWord =
 
           nickname:
             player.nickname,
+            avatar: player.avatar,
 
           drawing:
             player.drawing ??
@@ -892,6 +1012,8 @@ lobby.impostorWord =
 
                 nickname:
                   player.nickname,
+
+                avatar: player.avatar,
               }),
             ),
 
@@ -1064,6 +1186,8 @@ if (
           nickname:
             player.nickname,
 
+        avatar: player.avatar,
+
           word:
             player.id ===
             lobby.impostorId
@@ -1117,6 +1241,8 @@ if (
 
                 nickname:
                   player.nickname,
+
+                avatar: player.avatar,
 
                 score:
                   player.score,
@@ -1191,6 +1317,7 @@ if (
 
                       nickname:
                         player.nickname,
+                    avatar: player.avatar,
 
                       score:
                         player.score,

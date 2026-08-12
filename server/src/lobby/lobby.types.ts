@@ -8,13 +8,12 @@ export type Player = {
   id: string;
   nickname: string;
   isHost: boolean;
-
   drawingFinished: boolean;
   drawing?: string;
-
   voteFor?: string;
-
   score: number;
+
+  avatar?: string;
 };
 
 export type Lobby = {

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import PlayerList from '../components/PlayerList';
-import GameSettingsModal from '../components/lobby/GameSettingsModal';
+
+import LobbyContent from '../components/lobby/LobbyContent';
 
 import { socket } from '../socket/socket';
 import type { Lobby } from '../types/lobby';
@@ -58,69 +58,60 @@ export default function LobbyPage() {
 
     await navigator.clipboard.writeText(id);
   };
+const isHost =
+  lobby?.hostId === socket.id ||
+  lobby?.players.some(
+    (player) =>
+      player.id === socket.id &&
+      player.isHost,
+  ) === true;
+const startGame = () => {
+  if (!isHost || !id) return;
 
-  const currentPlayer = lobby?.players.find(
-    (player) => player.id === socket.id,
-  );
+  socket.emit('game:start', {
+    code: id,
+  });
+};
 
-  const isHost = currentPlayer?.isHost ?? false;
+if (!lobby) {
+  return <p>Chargement du lobby...</p>;
+}
 
-  const startGame = () => {
-    if (!isHost || !id) return;
+console.log('HOST DEBUG', {
+  socketId: socket.id,
+  hostId: lobby.hostId,
+  players: lobby.players,
+  isHost,
+});
 
-    socket.emit('game:start', {
-      code: id,
-    });
-  };
+return (
+  <main
+    className="
+      relative
+      flex
+      min-h-screen
+      w-full
+      items-center
+      justify-center
+      bg-[url('/bg_lobby.png')]
+      bg-cover
+      bg-center
+      bg-no-repeat
+      p-6
+    "
+  >
+    <div className="pointer-events-none absolute inset-0 bg-black/20" />
 
-  if (!lobby) {
-    return <p>Chargement du lobby...</p>;
-  }
-
-  return (
-    <main>
-      <h1>Draw Impostor</h1>
-
-      <p>
-        Lobby : <strong>{lobby.code}</strong>
-      </p>
-
-      <button onClick={copyLobbyCode}>
-        Copier le code
-      </button>
-
-      <section>
-        <h2>Joueurs ({lobby.players.length})</h2>
-
-        <PlayerList players={lobby.players} />
-      </section>
-
-      {isHost ? (
-        <section>
-          <button onClick={() => setSettingsOpen(true)}>
-            Options de la partie
-          </button>
-
-          <button
-            onClick={startGame}
-            disabled={lobby.players.length < 3}
-          >
-            Lancer la partie
-          </button>
-
-          {lobby.players.length < 3 && (
-            <p>Il faut au minimum 3 joueurs.</p>
-          )}
-        </section>
-      ) : (
-        <p>En attente que l'hôte lance la partie...</p>
-      )}
-
-      {settingsOpen && (
-        <GameSettingsModal
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
-    </main>
-  );
+    <div className="relative z-10 flex w-full justify-center">
+      <LobbyContent
+        lobby={lobby}
+        isHost={isHost}
+        settingsOpen={settingsOpen}
+        copyLobbyCode={copyLobbyCode}
+        startGame={startGame}
+        setSettingsOpen={setSettingsOpen}
+      />
+    </div>
+  </main>
+);
 }
