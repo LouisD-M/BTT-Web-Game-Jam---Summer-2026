@@ -4,6 +4,8 @@ type ColorPaletteProps = {
   onColorChange: (
     color: string,
   ) => void;
+
+  limited?: boolean;
 };
 
 const COLORS = [
@@ -30,13 +32,24 @@ const COLORS = [
   '#92400e',
 ];
 
+const LIMITED_COLORS = [
+  '#111111',
+  '#8b5cf6',
+];
+
 export default function ColorPalette({
   selectedColor,
   onColorChange,
+  limited = false,
 }: ColorPaletteProps) {
+  const availableColors =
+    limited
+      ? LIMITED_COLORS
+      : COLORS;
+
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {COLORS.map(
+      {availableColors.map(
         (color) => (
           <button
             key={color}
@@ -53,9 +66,7 @@ export default function ColorPalette({
               rounded-full
               border-2
               transition
-
-              hover:
-                scale-110
+              hover:scale-110
 
               ${
                 selectedColor ===
@@ -78,47 +89,49 @@ export default function ColorPalette({
         ),
       )}
 
-      <label
-        className="
-          relative
-          flex
-          h-9
-          w-9
-          cursor-pointer
-          items-center
-          justify-center
-          rounded-xl
-          border
-          border-white/20
-          bg-white/5
-          text-lg
-          text-white
-        "
-        title="Couleur personnalisée"
-      >
-        🎨
-
-        <input
-          type="color"
-          value={
-            selectedColor
-          }
-          onChange={(
-            event,
-          ) =>
-            onColorChange(
-              event.target
-                .value,
-            )
-          }
+      {!limited && (
+        <label
           className="
-            absolute
-            inset-0
+            relative
+            flex
+            h-9
+            w-9
             cursor-pointer
-            opacity-0
+            items-center
+            justify-center
+            rounded-xl
+            border
+            border-white/20
+            bg-white/5
+            text-lg
+            text-white
           "
-        />
-      </label>
+          title="Couleur personnalisée"
+        >
+          🎨
+
+          <input
+            type="color"
+            value={
+              selectedColor
+            }
+            onChange={(
+              event,
+            ) =>
+              onColorChange(
+                event.target
+                  .value,
+              )
+            }
+            className="
+              absolute
+              inset-0
+              cursor-pointer
+              opacity-0
+            "
+          />
+        </label>
+      )}
     </div>
   );
 }

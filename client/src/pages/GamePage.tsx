@@ -11,6 +11,10 @@ import GameContent from '../components/game/GameContent';
 
 import { socket } from '../socket/socket';
 
+import type {
+  GameModifier,
+} from '../types/game-settings';
+
 type GamePhase =
   | 'drawing'
   | 'review'
@@ -52,72 +56,109 @@ type ResultData = {
   normalWord: string;
   impostorWord: string;
 
-  votes: Record<string, number>;
+  votes: Record<
+    string,
+    number
+  >;
 
-  playerWords: PlayerWord[];
+  playerWords:
+    PlayerWord[];
 };
 
 export default function GamePage() {
-  const { id } = useParams();
+  const { id } =
+    useParams();
 
   const [
     phase,
     setPhase,
-  ] = useState<GamePhase>(
-    'drawing',
-  );
+  ] =
+    useState<GamePhase>(
+      'drawing',
+    );
 
   const [
     word,
     setWord,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     rule,
     setRule,
-  ] = useState('Normal');
+  ] =
+    useState('Normal');
+
+  const [
+    modifier,
+    setModifier,
+  ] =
+    useState<GameModifier>(
+      'normal',
+    );
+
+  const [
+    drawingDuration,
+    setDrawingDuration,
+  ] =
+    useState(30);
 
   const [
     players,
     setPlayers,
-  ] = useState<Player[]>([]);
+  ] =
+    useState<Player[]>([]);
 
   const [
     drawings,
     setDrawings,
-  ] = useState<Drawing[]>([]);
+  ] =
+    useState<Drawing[]>([]);
 
   const [
     results,
     setResults,
-  ] = useState<ResultData | null>(
-    null,
-  );
+  ] =
+    useState<ResultData | null>(
+      null,
+    );
 
   const [
     round,
     setRound,
-  ] = useState(1);
+  ] =
+    useState(1);
 
   const [
     totalRounds,
     setTotalRounds,
-  ] = useState(5);
+  ] =
+    useState(5);
 
   const [
     finalScores,
     setFinalScores,
-  ] = useState<ScorePlayer[]>(
-    [],
-  );
+  ] =
+    useState<
+      ScorePlayer[]
+    >([]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      return;
+    }
 
     const handleRoundStarted = (
       data: {
         round: number;
-        totalRounds: number;
+
+        totalRounds:
+          number;
+
+        duration?: number;
+
+        modifier?:
+          GameModifier;
       },
     ) => {
       setRound(
@@ -127,6 +168,23 @@ export default function GamePage() {
       setTotalRounds(
         data.totalRounds,
       );
+
+      if (
+        typeof data.duration ===
+        'number'
+      ) {
+        setDrawingDuration(
+          data.duration,
+        );
+      }
+
+      if (
+        data.modifier
+      ) {
+        setModifier(
+          data.modifier,
+        );
+      }
 
       setResults(
         null,
@@ -142,7 +200,13 @@ export default function GamePage() {
     const handleRoundWord = (
       data: {
         word: string;
+
         rule?: string;
+
+        modifier?:
+          GameModifier;
+
+        duration?: number;
       },
     ) => {
       setWord(
@@ -151,8 +215,25 @@ export default function GamePage() {
 
       setRule(
         data.rule ??
-          'Normal',
+          'normal',
       );
+
+      if (
+        data.modifier
+      ) {
+        setModifier(
+          data.modifier,
+        );
+      }
+
+      if (
+        typeof data.duration ===
+        'number'
+      ) {
+        setDrawingDuration(
+          data.duration,
+        );
+      }
     };
 
     const handleReviewStarted = (
@@ -197,7 +278,8 @@ export default function GamePage() {
     };
 
     const handleRoundResults = (
-      data: ResultData,
+      data:
+        ResultData,
     ) => {
       setResults(
         data,
@@ -253,9 +335,12 @@ export default function GamePage() {
       handleGameFinished,
     );
 
-    socket.emit('game:get-state', {
-     code: id,
-    });
+    socket.emit(
+      'game:get-state',
+      {
+        code: id,
+      },
+    );
 
     return () => {
       socket.off(
@@ -298,35 +383,49 @@ export default function GamePage() {
     );
   }
 
-return (
-  <main
-    className="
-      relative
-      min-h-screen
-      w-full
-      bg-[url('/bg_game.png')]
-      bg-cover
-      bg-center
-      bg-no-repeat
-      p-6
-    "
-  >
-    <div className="absolute inset-0 bg-black/20" />
+  return (
+    <main
+      className="
+        relative
+        min-h-screen
+        w-full
+        bg-[url('/bg_game.png')]
+        bg-cover
+        bg-center
+        bg-no-repeat
+        p-6
+      "
+    >
+      <div className="absolute inset-0 bg-black/20" />
 
-    <div className="relative z-10">
-      <GameContent
-        phase={phase}
-        lobbyCode={id}
-        round={round}
-        totalRounds={totalRounds}
-        word={word}
-        rule={rule}
-        players={players}
-        drawings={drawings}
-        results={results}
-        finalScores={finalScores}
-      />
-    </div>
-  </main>
-);
+      <div className="relative z-10">
+        <GameContent
+          phase={phase}
+          lobbyCode={id}
+          round={round}
+          totalRounds={
+            totalRounds
+          }
+          word={word}
+          rule={rule}
+          modifier={
+            modifier
+          }
+          drawingDuration={
+            drawingDuration
+          }
+          players={players}
+          drawings={
+            drawings
+          }
+          results={
+            results
+          }
+          finalScores={
+            finalScores
+          }
+        />
+      </div>
+    </main>
+  );
 }

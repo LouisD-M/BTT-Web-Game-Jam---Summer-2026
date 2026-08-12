@@ -5,6 +5,10 @@ import {
   useState,
 } from 'react';
 
+import type {
+  GameModifier,
+} from '../../../types/game-settings';
+
 import DrawingToolbar from './DrawingToolbar';
 import TextToolModal from './TextToolModal';
 
@@ -29,26 +33,73 @@ type DrawingCanvasProps = {
   ) => void;
 
   mode?: 'game' | 'avatar';
+
+  modifier?: GameModifier;
+};
+
+const MODIFIER_LABELS: Record<
+  GameModifier,
+  string
+> = {
+  normal:
+    '✏️ Normal',
+
+  twoColors:
+    '🎨 Deux couleurs',
+
+  oneStroke:
+    '〰️ Un seul trait',
+
+  reverseMouse:
+    '🔄 Souris inversée',
+
+  speedDraw:
+    '⚡ Speed Draw',
+
+  blindDraw:
+    "🙈 Dessin à l'aveugle",
+
+  sharedCanvas:
+    '👥 Canvas partagé',
 };
 
 export default function DrawingCanvas({
   onCanvasReady,
   mode = 'game',
+  modifier = 'normal',
 }: DrawingCanvasProps) {
   const canvasRef =
     useRef<HTMLCanvasElement | null>(
       null,
     );
 
-    const isAvatar =
-  mode === 'avatar';
+  const isAvatar =
+    mode === 'avatar';
 
-const canvasWidth =
-  isAvatar ? 600 : 1200;
+  const isReverseMouse =
+    mode === 'game' &&
+    modifier ===
+      'reverseMouse';
 
-const canvasHeight =
-  isAvatar ? 600 : 700;
-    
+  const isOneStroke =
+    mode === 'game' &&
+    modifier ===
+      'oneStroke';
+
+  const isBlindDraw =
+    mode === 'game' &&
+    modifier ===
+      'blindDraw';
+
+  const canvasWidth =
+    isAvatar
+      ? 600
+      : 1200;
+
+  const canvasHeight =
+    isAvatar
+      ? 600
+      : 700;
 
   const [
     tool,
@@ -62,7 +113,9 @@ const canvasHeight =
     color,
     setColor,
   ] =
-    useState('#111111');
+    useState(
+      '#111111',
+    );
 
   const [
     brushSize,
@@ -119,7 +172,15 @@ const canvasHeight =
     useState<{
       text: string;
       fontSize: number;
-    } | null>(null);
+    } | null>(
+      null,
+    );
+
+  /*
+   * =====================================================
+   * COORDONNÉES
+   * =====================================================
+   */
 
   const getCoordinates =
     useCallback(
@@ -140,22 +201,51 @@ const canvasHeight =
         const rect =
           canvas.getBoundingClientRect();
 
-        return {
-          x:
-            (event.clientX -
-              rect.left) *
-            (canvas.width /
-              rect.width),
+        let x =
+          (event.clientX -
+            rect.left) *
+          (canvas.width /
+            rect.width);
 
-          y:
-            (event.clientY -
-              rect.top) *
-            (canvas.height /
-              rect.height),
+        let y =
+          (event.clientY -
+            rect.top) *
+          (canvas.height /
+            rect.height);
+
+        /*
+         * SOURIS INVERSÉE
+         *
+         * Haut → bas
+         * Gauche → droite
+         */
+        if (
+          isReverseMouse
+        ) {
+          x =
+            canvas.width -
+            x;
+
+          y =
+            canvas.height -
+            y;
+        }
+
+        return {
+          x,
+          y,
         };
       },
-      [],
+      [
+        isReverseMouse,
+      ],
     );
+
+  /*
+   * =====================================================
+   * RENDER
+   * =====================================================
+   */
 
   const repaint =
     useCallback(() => {
@@ -178,31 +268,91 @@ const canvasHeight =
 
   useEffect(() => {
     repaint();
-  }, [repaint]);
+  }, [
+    repaint,
+  ]);
+
+  /*
+   * =====================================================
+   * EXPORT PNG
+   * =====================================================
+   */
 
   useEffect(() => {
-    onCanvasReady(() => {
-      const canvas =
-        canvasRef.current;
+    onCanvasReady(
+      () => {
+        const canvas =
+          canvasRef.current;
 
-      if (!canvas) {
-        return '';
-      }
+        if (!canvas) {
+          return '';
+        }
 
-      renderCanvas(
-        canvas,
-        actions,
-        null,
-      );
+        /*
+         * On exporte uniquement
+         * les actions validées.
+         */
+        renderCanvas(
+          canvas,
+          actions,
+          null,
+        );
 
-      return canvas.toDataURL(
-        'image/png',
-      );
-    });
+        return canvas.toDataURL(
+          'image/png',
+        );
+      },
+    );
   }, [
     actions,
     onCanvasReady,
   ]);
+
+  /*
+   * =====================================================
+   * MODIFIER : ONE STROKE
+   * =====================================================
+   */
+
+  useEffect(() => {
+    if (
+      !isOneStroke
+    ) {
+      return;
+    }
+
+    /*
+     * Un seul trait doit être
+     * réellement un trait.
+     */
+    setTool(
+      'pen',
+    );
+
+    setFilled(
+      false,
+    );
+
+    setOpacity(
+      1,
+    );
+
+    setPendingText(
+      null,
+    );
+
+    setTextModalOpen(
+      false,
+    );
+  }, [
+    isOneStroke,
+  ]);
+
+  /*
+   * =====================================================
+   * ACTIONS
+   * =====================================================
+   */
 
   const commitAction =
     useCallback(
@@ -211,21 +361,37 @@ const canvasHeight =
           DrawAction,
       ) => {
         setActions(
-          (current) => [
+          (
+            current,
+          ) => [
             ...current,
             action,
           ],
         );
 
-        setRedoStack([]);
+        setRedoStack(
+          [],
+        );
       },
       [],
     );
 
   const undo =
     useCallback(() => {
+      /*
+       * Impossible de tricher
+       * en One Stroke.
+       */
+      if (
+        isOneStroke
+      ) {
+        return;
+      }
+
       setActions(
-        (current) => {
+        (
+          current,
+        ) => {
           if (
             current.length ===
             0
@@ -240,7 +406,9 @@ const canvasHeight =
             ];
 
           setRedoStack(
-            (redo) => [
+            (
+              redo,
+            ) => [
               ...redo,
               last,
             ],
@@ -252,12 +420,22 @@ const canvasHeight =
           );
         },
       );
-    }, []);
+    }, [
+      isOneStroke,
+    ]);
 
   const redo =
     useCallback(() => {
+      if (
+        isOneStroke
+      ) {
+        return;
+      }
+
       setRedoStack(
-        (current) => {
+        (
+          current,
+        ) => {
           if (
             current.length ===
             0
@@ -272,8 +450,10 @@ const canvasHeight =
             ];
 
           setActions(
-            (actions) => [
-              ...actions,
+            (
+              currentActions,
+            ) => [
+              ...currentActions,
               last,
             ],
           );
@@ -284,121 +464,221 @@ const canvasHeight =
           );
         },
       );
-    }, []);
+    }, [
+      isOneStroke,
+    ]);
 
   const clear =
     useCallback(() => {
-      setActions([]);
-      setRedoStack([]);
+      if (
+        isOneStroke
+      ) {
+        return;
+      }
+
+      setActions(
+        [],
+      );
+
+      setRedoStack(
+        [],
+      );
+
       setCurrentAction(
         null,
       );
-    }, []);
+    }, [
+      isOneStroke,
+    ]);
 
-useEffect(() => {
-  const handleKeyDown = (
-    event: KeyboardEvent,
-  ) => {
-    const target =
-      event.target as HTMLElement;
+  /*
+   * =====================================================
+   * RACCOURCIS CLAVIER
+   * =====================================================
+   */
 
-    if (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA'
-    ) {
-      return;
-    }
+  useEffect(() => {
+    const handleKeyDown = (
+      event:
+        KeyboardEvent,
+    ) => {
+      const target =
+        event.target as
+          HTMLElement;
 
-    if (
-      (event.ctrlKey ||
-        event.metaKey) &&
-      event.key.toLowerCase() === 'z'
-    ) {
-      event.preventDefault();
-
-      if (event.shiftKey) {
-        redo();
-      } else {
-        undo();
+      if (
+        target.tagName ===
+          'INPUT' ||
+        target.tagName ===
+          'TEXTAREA'
+      ) {
+        return;
       }
 
-      return;
-    }
+      /*
+       * CTRL + Z
+       */
+      if (
+        (
+          event.ctrlKey ||
+          event.metaKey
+        ) &&
+        event.key.toLowerCase() ===
+          'z'
+      ) {
+        event.preventDefault();
 
-    if (
-      (event.ctrlKey ||
-        event.metaKey) &&
-      event.key.toLowerCase() === 'y'
-    ) {
-      event.preventDefault();
-
-      redo();
-
-      return;
-    }
-
-    switch (
-      event.key.toLowerCase()
-    ) {
-      case 'b':
-        setTool('pen');
-        break;
-
-      case 'e':
-        setTool('eraser');
-        break;
-
-      case 'l':
-        if (mode !== 'avatar') {
-          setTool('line');
+        if (
+          isOneStroke
+        ) {
+          return;
         }
-        break;
 
-      case 'r':
-        setTool('rectangle');
-        break;
-
-      case 'c':
-        setTool('circle');
-        break;
-
-      case 'a':
-        if (mode !== 'avatar') {
-          setTool('arrow');
+        if (
+          event.shiftKey
+        ) {
+          redo();
+        } else {
+          undo();
         }
-        break;
 
-      case 'f':
-        setTool('fill');
-        break;
+        return;
+      }
 
-      case 'i':
-        setTool('eyedropper');
-        break;
+      /*
+       * CTRL + Y
+       */
+      if (
+        (
+          event.ctrlKey ||
+          event.metaKey
+        ) &&
+        event.key.toLowerCase() ===
+          'y'
+      ) {
+        event.preventDefault();
 
-      case 't':
-        if (mode !== 'avatar') {
-          setTool('text');
+        if (
+          isOneStroke
+        ) {
+          return;
         }
-        break;
-    }
-  };
 
-  window.addEventListener(
-    'keydown',
-    handleKeyDown,
-  );
+        redo();
 
-  return () =>
-    window.removeEventListener(
+        return;
+      }
+
+      /*
+       * One Stroke :
+       * aucun changement
+       * d'outil autorisé.
+       */
+      if (
+        isOneStroke
+      ) {
+        return;
+      }
+
+      switch (
+        event.key.toLowerCase()
+      ) {
+        case 'b':
+          setTool(
+            'pen',
+          );
+          break;
+
+        case 'e':
+          setTool(
+            'eraser',
+          );
+          break;
+
+        case 'l':
+          if (
+            mode !==
+            'avatar'
+          ) {
+            setTool(
+              'line',
+            );
+          }
+
+          break;
+
+        case 'r':
+          setTool(
+            'rectangle',
+          );
+          break;
+
+        case 'c':
+          setTool(
+            'circle',
+          );
+          break;
+
+        case 'a':
+          if (
+            mode !==
+            'avatar'
+          ) {
+            setTool(
+              'arrow',
+            );
+          }
+
+          break;
+
+        case 'f':
+          setTool(
+            'fill',
+          );
+          break;
+
+        case 'i':
+          setTool(
+            'eyedropper',
+          );
+          break;
+
+        case 't':
+          if (
+            mode !==
+            'avatar'
+          ) {
+            setTool(
+              'text',
+            );
+          }
+
+          break;
+      }
+    };
+
+    window.addEventListener(
       'keydown',
       handleKeyDown,
     );
-}, [
-  redo,
-  undo,
-  mode,
-]);
+
+    return () =>
+      window.removeEventListener(
+        'keydown',
+        handleKeyDown,
+      );
+  }, [
+    redo,
+    undo,
+    mode,
+    isOneStroke,
+  ]);
+
+  /*
+   * =====================================================
+   * EYEDROPPER
+   * =====================================================
+   */
 
   const useEyedropper = (
     point: Point,
@@ -446,13 +726,22 @@ useEffect(() => {
       pickedColor,
     );
 
-    setTool('pen');
+    setTool(
+      'pen',
+    );
   };
+
+  /*
+   * =====================================================
+   * SPRAY
+   * =====================================================
+   */
 
   const createSprayPoints = (
     center: Point,
   ) => {
-    const points: Point[] =
+    const points:
+      Point[] =
       [];
 
     const radius =
@@ -465,13 +754,15 @@ useEffect(() => {
       Math.max(
         10,
         Math.round(
-          brushSize * 1.5,
+          brushSize *
+            1.5,
         ),
       );
 
     for (
       let index = 0;
-      index < quantity;
+      index <
+      quantity;
       index += 1
     ) {
       const angle =
@@ -504,6 +795,12 @@ useEffect(() => {
     return points;
   };
 
+  /*
+   * =====================================================
+   * POINTER DOWN
+   * =====================================================
+   */
+
   const handlePointerDown = (
     event:
       React.PointerEvent<HTMLCanvasElement>,
@@ -512,6 +809,31 @@ useEffect(() => {
       canvasRef.current;
 
     if (!canvas) {
+      return;
+    }
+
+    /*
+     * ONE STROKE :
+     *
+     * Une action a déjà
+     * été enregistrée.
+     */
+    if (
+      isOneStroke &&
+      actions.length >
+        0
+    ) {
+      return;
+    }
+
+    /*
+     * Empêche un deuxième
+     * pointer pendant qu'un
+     * dessin est déjà actif.
+     */
+    if (
+      currentAction
+    ) {
       return;
     }
 
@@ -524,6 +846,9 @@ useEffect(() => {
         event,
       );
 
+    /*
+     * PIPETTE
+     */
     if (
       tool ===
       'eyedropper'
@@ -535,13 +860,18 @@ useEffect(() => {
       return;
     }
 
+    /*
+     * REMPLISSAGE
+     */
     if (
       tool === 'fill'
     ) {
       commitAction({
-        id: createId(),
+        id:
+          createId(),
 
-        tool: 'fill',
+        tool:
+          'fill',
 
         color,
 
@@ -558,14 +888,21 @@ useEffect(() => {
       return;
     }
 
+    /*
+     * TEXTE
+     */
     if (
       tool === 'text'
     ) {
-      if (pendingText) {
+      if (
+        pendingText
+      ) {
         commitAction({
-          id: createId(),
+          id:
+            createId(),
 
-          tool: 'text',
+          tool:
+            'text',
 
           color,
 
@@ -605,10 +942,13 @@ useEffect(() => {
         ? createSprayPoints(
             point,
           )
-        : [point];
+        : [
+            point,
+          ];
 
     setCurrentAction({
-      id: createId(),
+      id:
+        createId(),
 
       tool,
 
@@ -625,8 +965,16 @@ useEffect(() => {
       filled,
     });
 
-    setRedoStack([]);
+    setRedoStack(
+      [],
+    );
   };
+
+  /*
+   * =====================================================
+   * POINTER MOVE
+   * =====================================================
+   */
 
   const handlePointerMove = (
     event:
@@ -644,11 +992,16 @@ useEffect(() => {
       );
 
     setCurrentAction(
-      (current) => {
+      (
+        current,
+      ) => {
         if (!current) {
           return null;
         }
 
+        /*
+         * SPRAY
+         */
         if (
           current.tool ===
           'spray'
@@ -658,6 +1011,7 @@ useEffect(() => {
 
             points: [
               ...current.points,
+
               ...createSprayPoints(
                 point,
               ),
@@ -665,6 +1019,9 @@ useEffect(() => {
           };
         }
 
+        /*
+         * FORMES
+         */
         if (
           current.tool ===
             'line' ||
@@ -681,11 +1038,17 @@ useEffect(() => {
             points: [
               current
                 .points[0],
+
               point,
             ],
           };
         }
 
+        /*
+         * CRAYON /
+         * GOMME /
+         * SURLIGNEUR
+         */
         return {
           ...current,
 
@@ -697,6 +1060,12 @@ useEffect(() => {
       },
     );
   };
+
+  /*
+   * =====================================================
+   * POINTER UP
+   * =====================================================
+   */
 
   const handlePointerUp = (
     event:
@@ -730,16 +1099,33 @@ useEffect(() => {
     );
   };
 
+  /*
+   * =====================================================
+   * TOOL CHANGE
+   * =====================================================
+   */
+
   const handleToolChange = (
     nextTool:
       DrawingTool,
   ) => {
+    if (
+      isOneStroke
+    ) {
+      setTool(
+        'pen',
+      );
+
+      return;
+    }
+
     setTool(
       nextTool,
     );
 
     if (
-      nextTool === 'text'
+      nextTool ===
+      'text'
     ) {
       setTextModalOpen(
         true,
@@ -747,8 +1133,15 @@ useEffect(() => {
     }
   };
 
+  /*
+   * =====================================================
+   * COLOR CHANGE
+   * =====================================================
+   */
+
   const handleColorChange = (
-    nextColor: string,
+    nextColor:
+      string,
   ) => {
     setColor(
       nextColor,
@@ -756,33 +1149,54 @@ useEffect(() => {
 
     if (
       tool ===
-      'eraser' ||
+        'eraser' ||
       tool ===
-      'eyedropper'
+        'eyedropper'
     ) {
-      setTool('pen');
+      setTool(
+        'pen',
+      );
     }
   };
+
+  /*
+   * =====================================================
+   * UI
+   * =====================================================
+   */
 
   return (
     <>
       <div className="w-full">
         <DrawingToolbar
-            mode={mode}
-          tool={tool}
-          color={color}
+          mode={
+            mode
+          }
+          modifier={modifier}
+          tool={
+            tool
+          }
+          color={
+            color
+          }
           brushSize={
             brushSize
           }
-          opacity={opacity}
-          filled={filled}
+          opacity={
+            opacity
+          }
+          filled={
+            filled
+          }
           canUndo={
+            !isOneStroke &&
             actions.length >
-            0
+              0
           }
           canRedo={
+            !isOneStroke &&
             redoStack.length >
-            0
+              0
           }
           onToolChange={
             handleToolChange
@@ -799,146 +1213,324 @@ useEffect(() => {
           onFilledChange={
             setFilled
           }
-          onUndo={undo}
-          onRedo={redo}
+          onUndo={
+            undo
+          }
+          onRedo={
+            redo
+          }
           onClear={
             clear
           }
         />
 
-<div
-  className={`
-    relative
-    overflow-hidden
-    rounded-3xl
-    border-4
-    border-[#9b5cff]/50
-    bg-white
-    shadow-2xl
-    shadow-black/40
-    pointer-events-auto
+        <div
+          className={`
+            relative
+            overflow-hidden
+            rounded-3xl
+            border-4
+            border-[#9b5cff]/50
+            bg-white
+            shadow-2xl
+            shadow-black/40
+            pointer-events-auto
 
-    ${
-      isAvatar
-        ? 'mx-auto max-w-lg'
-        : 'w-full'
-    }
-  `}
->
-<canvas
-  ref={canvasRef}
-  width={canvasWidth}
-  height={canvasHeight}
-  onPointerDown={handlePointerDown}
-  onPointerMove={handlePointerMove}
-  onPointerUp={handlePointerUp}
-  onPointerCancel={handlePointerUp}
-  onContextMenu={(event) =>
-    event.preventDefault()
-  }
-  className={`
-    block
-    w-full
-    bg-white
-    touch-none
-    select-none
-    pointer-events-auto
-
-    ${
-      isAvatar
-        ? 'aspect-square'
-        : 'aspect-[12/7]'
-    }
-
-    ${
-      tool === 'fill'
-        ? 'cursor-cell'
-        : tool === 'eyedropper'
-        ? 'cursor-copy'
-        : 'cursor-crosshair'
-    }
-  `}
-/>
-
-          <div
-            className="
-              pointer-events-none
-              absolute
-              bottom-3
-              left-3
-              rounded-full
-              border
-              border-black/10
-              bg-white/80
-              px-3
-              py-1
-              text-xs
-              font-semibold
-              text-[#202335]
-              shadow-sm
-              backdrop-blur
-            "
-          >
-            {
-              {
-                pen:
-                  '✏️ Crayon',
-                eraser:
-                  '🧽 Gomme',
-                line:
-                  '📏 Ligne',
-                rectangle:
-                  '▭ Rectangle',
-                circle:
-                  '○ Cercle',
-                arrow:
-                  '➜ Flèche',
-                spray:
-                  '💨 Spray',
-                highlighter:
-                  '🖍 Surligneur',
-                fill:
-                  '🪣 Remplissage',
-                eyedropper:
-                  '💧 Pipette',
-                text:
-                  '🔤 Texte',
-              }[tool]
+            ${
+              isAvatar
+                ? `
+                  mx-auto
+                  max-w-lg
+                `
+                : `
+                  w-full
+                `
             }
-          </div>
+          `}
+        >
+          {/* MODIFIER COURANT */}
+
+          {mode ===
+            'game' &&
+            modifier !==
+              'normal' && (
+              <div
+                className="
+                  pointer-events-none
+                  absolute
+                  right-3
+                  top-3
+                  z-30
+                  rounded-full
+                  border
+                  border-[#9b5cff]/40
+                  bg-[#11131f]/90
+                  px-4
+                  py-2
+                  text-xs
+                  font-bold
+                  text-white
+                  shadow-lg
+                  backdrop-blur
+                "
+              >
+                {
+                  MODIFIER_LABELS[
+                    modifier
+                  ]
+                }
+              </div>
+            )}
+
+          {/* MODE AVEUGLE */}
+
+          {isBlindDraw && (
+            <div
+              className="
+                pointer-events-none
+                absolute
+                inset-0
+                z-20
+                flex
+                items-center
+                justify-center
+              "
+            >
+              <div
+                className="
+                  max-w-sm
+                  rounded-3xl
+                  border
+                  border-[#9b5cff]/30
+                  bg-white/90
+                  px-8
+                  py-6
+                  text-center
+                  shadow-2xl
+                  backdrop-blur-sm
+                "
+              >
+                <div className="text-5xl">
+                  🙈
+                </div>
+
+                <p
+                  className="
+                    mt-3
+                    text-xl
+                    font-black
+                    text-[#202335]
+                  "
+                >
+                  Dessine à
+                  l'aveugle
+                </p>
+
+                <p
+                  className="
+                    mt-1
+                    text-sm
+                    text-[#686c7f]
+                  "
+                >
+                  Ton dessin est
+                  enregistré, mais
+                  tu ne peux pas le
+                  voir.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <canvas
+            ref={
+              canvasRef
+            }
+            width={
+              canvasWidth
+            }
+            height={
+              canvasHeight
+            }
+            onPointerDown={
+              handlePointerDown
+            }
+            onPointerMove={
+              handlePointerMove
+            }
+            onPointerUp={
+              handlePointerUp
+            }
+            onPointerCancel={
+              handlePointerUp
+            }
+            onContextMenu={(
+              event,
+            ) =>
+              event.preventDefault()
+            }
+            className={`
+              block
+              w-full
+              bg-white
+              touch-none
+              select-none
+              pointer-events-auto
+              transition-opacity
+              duration-300
+
+              ${
+                isAvatar
+                  ? 'aspect-square'
+                  : 'aspect-[12/7]'
+              }
+
+              ${
+                isBlindDraw
+                  ? 'opacity-0'
+                  : 'opacity-100'
+              }
+
+              ${
+                tool ===
+                'fill'
+                  ? 'cursor-cell'
+                  : tool ===
+                      'eyedropper'
+                    ? 'cursor-copy'
+                    : 'cursor-crosshair'
+              }
+            `}
+          />
+
+          {/* OUTIL COURANT */}
+
+          {!isBlindDraw && (
+            <div
+              className="
+                pointer-events-none
+                absolute
+                bottom-3
+                left-3
+                rounded-full
+                border
+                border-black/10
+                bg-white/80
+                px-3
+                py-1
+                text-xs
+                font-semibold
+                text-[#202335]
+                shadow-sm
+                backdrop-blur
+              "
+            >
+              {
+                {
+                  pen:
+                    '✏️ Crayon',
+
+                  eraser:
+                    '🧽 Gomme',
+
+                  line:
+                    '📏 Ligne',
+
+                  rectangle:
+                    '▭ Rectangle',
+
+                  circle:
+                    '○ Cercle',
+
+                  arrow:
+                    '➜ Flèche',
+
+                  spray:
+                    '💨 Spray',
+
+                  highlighter:
+                    '🖍 Surligneur',
+
+                  fill:
+                    '🪣 Remplissage',
+
+                  eyedropper:
+                    '💧 Pipette',
+
+                  text:
+                    '🔤 Texte',
+                }[
+                  tool
+                ]
+              }
+            </div>
+          )}
+
+          {/* INFO ONE STROKE */}
+
+          {isOneStroke &&
+            actions.length >
+              0 && (
+              <div
+                className="
+                  pointer-events-none
+                  absolute
+                  inset-x-0
+                  bottom-4
+                  flex
+                  justify-center
+                "
+              >
+                <div
+                  className="
+                    rounded-full
+                    bg-[#11131f]/90
+                    px-5
+                    py-2
+                    text-sm
+                    font-bold
+                    text-white
+                    shadow-xl
+                  "
+                >
+                  〰️ Trait terminé !
+                </div>
+              </div>
+            )}
         </div>
       </div>
 
-      {textModalOpen && (
-        <TextToolModal
-          onCancel={() => {
-            setTextModalOpen(
-              false,
-            );
+      {textModalOpen &&
+        !isOneStroke && (
+          <TextToolModal
+            onCancel={() => {
+              setTextModalOpen(
+                false,
+              );
 
-            setTool(
-              'pen',
-            );
-          }}
-          onSubmit={(
-            text,
-            fontSize,
-          ) => {
-            setPendingText({
+              setTool(
+                'pen',
+              );
+            }}
+            onSubmit={(
               text,
               fontSize,
-            });
+            ) => {
+              setPendingText({
+                text,
+                fontSize,
+              });
 
-            setTextModalOpen(
-              false,
-            );
+              setTextModalOpen(
+                false,
+              );
 
-            setTool(
-              'text',
-            );
-          }}
-        />
-      )}
+              setTool(
+                'text',
+              );
+            }}
+          />
+        )}
     </>
   );
 }

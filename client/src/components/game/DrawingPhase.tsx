@@ -11,24 +11,39 @@ import GameRuleBadge from './GameRuleBadge';
 
 import { socket } from '../../socket/socket';
 
+import type {
+  GameModifier,
+} from '../../types/game-settings';
+
 type DrawingPhaseProps = {
   lobbyCode: string;
+
   word: string;
+
   rule: string;
+
+  modifier: GameModifier;
+
+  drawingDuration: number;
 };
 
 export default function DrawingPhase({
   lobbyCode,
   word,
   rule,
+  modifier,
+  drawingDuration,
 }: DrawingPhaseProps) {
-  const [finished, setFinished] =
+  const [
+    finished,
+    setFinished,
+  ] =
     useState(false);
 
   const getImageRef =
-    useRef<(() => string) | null>(
-      null,
-    );
+    useRef<
+      (() => string) | null
+    >(null);
 
   const handleCanvasReady =
     useCallback(
@@ -42,7 +57,9 @@ export default function DrawingPhase({
     );
 
   const finishDrawing = () => {
-    if (finished) return;
+    if (finished) {
+      return;
+    }
 
     const drawing =
       getImageRef.current?.();
@@ -60,7 +77,9 @@ export default function DrawingPhase({
     socket.emit(
       'drawing:finished',
       {
-        code: lobbyCode,
+        code:
+          lobbyCode,
+
         drawing,
       },
     );
@@ -78,7 +97,11 @@ export default function DrawingPhase({
               md:grid-cols-[1fr_1.4fr_1fr]
             "
           >
-            <GameTimer duration={30} />
+            <GameTimer
+              duration={
+                drawingDuration
+              }
+            />
 
             <WordDisplay
               word={
@@ -88,11 +111,16 @@ export default function DrawingPhase({
             />
 
             <GameRuleBadge
-              rule={rule}
+              rule={
+                rule
+              }
             />
           </div>
 
           <DrawingCanvas
+            modifier={
+              modifier
+            }
             onCanvasReady={
               handleCanvasReady
             }
@@ -101,7 +129,9 @@ export default function DrawingPhase({
           <div className="mt-5 flex justify-center">
             <button
               type="button"
-              onClick={finishDrawing}
+              onClick={
+                finishDrawing
+              }
               className="
                 min-w-72
                 rounded-2xl

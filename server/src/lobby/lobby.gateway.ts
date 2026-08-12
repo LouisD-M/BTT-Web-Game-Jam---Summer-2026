@@ -7,6 +7,10 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import type {
+  GameModifier,
+  GameSettings,
+} from './lobby.types';
 
 import {
   Server,
@@ -158,6 +162,47 @@ export class LobbyGateway
         lobby,
       );
   }
+
+@SubscribeMessage('settings:update')
+handleSettingsUpdate(
+  @ConnectedSocket()
+  socket: Socket,
+
+  @MessageBody()
+  data: {
+    code: string;
+    settings: GameSettings;
+  },
+) {
+  const code =
+    data.code.toUpperCase();
+
+  const lobby =
+    this.lobbyService.updateSettings(
+      code,
+      socket.id,
+      data.settings,
+    );
+
+  if (!lobby) {
+    socket.emit(
+      'lobby:error',
+      {
+        message:
+          'Impossible de modifier les options',
+      },
+    );
+
+    return;
+  }
+
+  this.server
+    .to(code)
+    .emit(
+      'lobby:update',
+      lobby,
+    );
+}
 
   @SubscribeMessage('avatar:update')
 handleAvatarUpdate(
@@ -558,6 +603,7 @@ handleAvatarUpdate(
 // GET CURRENT GAME STATE
 // =====================================================
 
+
 @SubscribeMessage('game:get-state')
 handleGetGameState(
   @ConnectedSocket()
@@ -580,35 +626,51 @@ handleGetGameState(
     return;
   }
 
-  if (lobby.state !== 'playing') {
+  if (
+    lobby.state !== 'playing'
+  ) {
     return;
   }
 
   const player =
     lobby.players.find(
       (player) =>
-        player.id === socket.id,
+        player.id ===
+        socket.id,
     );
 
   if (!player) {
     return;
   }
 
-  // On resynchronise les infos
-  // de la manche actuelle.
+  const currentModifier =
+    lobby.currentModifier ??
+    'normal';
+
+  const drawingDuration =
+    currentModifier ===
+    'speedDraw'
+      ? 10
+      : lobby.settings
+          .drawingTime;
+
   socket.emit(
     'round:started',
     {
-      round: lobby.round,
+      round:
+        lobby.round,
+
       totalRounds:
         lobby.totalRounds,
-      duration: 30,
+
+      duration:
+        drawingDuration,
+
+      modifier:
+        currentModifier,
     },
   );
 
-  // Si nous sommes encore
-  // dans la phase dessin,
-  // on renvoie le mot secret.
   if (
     lobby.phase === 'drawing'
   ) {
@@ -622,7 +684,15 @@ handleGetGameState(
       'round:word',
       {
         word,
-        rule: 'Normal',
+
+        rule:
+          currentModifier,
+
+        modifier:
+          currentModifier,
+
+        duration:
+          drawingDuration,
       },
     );
   }
@@ -632,185 +702,187 @@ handleGetGameState(
   // START ROUND
   // =====================================================
 
-  private startRound(
-    code: string,
-  ) {
-    const lobby =
-      this.lobbyService.getLobby(
-        code,
-      );
-
-    if (!lobby) {
-      return;
-    }
-
-    /*
-     * CRITIQUE :
-     * aucune manche précédente
-     * ne doit conserver un timer.
-     */
-    this.clearAllTimers(
+private startRound(
+  code: string,
+) {
+  const lobby =
+    this.lobbyService.getLobby(
       code,
     );
 
-    lobby.round += 1;
+  if (!lobby) {
+    return;
+  }
 
-    lobby.phase =
-      'drawing';
+  this.clearAllTimers(
+    code,
+  );
 
-    const roundNumber =
-      lobby.round;
+  lobby.round += 1;
 
-    /*
-     * RESET COMPLET
-     * des données de manche.
-     */
-    for (
-      const player
-      of lobby.players
-    ) {
-      player.drawingFinished =
-        false;
+  lobby.phase =
+    'drawing';
 
-      player.drawing =
-        undefined;
+const availableModifiers: GameModifier[] =
+  lobby.settings.modifiers.length > 0
+    ? lobby.settings.modifiers
+    : ['normal'];
 
-      player.voteFor =
-        undefined;
-    }
-
-    /*
-     * Nouvel imposteur.
-     */
-    const randomIndex =
-      Math.floor(
-        Math.random() *
-          lobby.players.length,
-      );
-
-    lobby.impostorId =
-      lobby.players[
-        randomIndex
-      ].id;
-
-    /*
-     * Temporaire.
-     * On mettra ensuite
-     * les paires de mots.
-     */
-const randomPair =
-  WORD_PAIRS[
+const randomModifier: GameModifier =
+  availableModifiers[
     Math.floor(
       Math.random() *
-      WORD_PAIRS.length,
+        availableModifiers.length,
     )
   ];
 
-lobby.normalWord =
-  randomPair.normal;
+lobby.currentModifier =
+  randomModifier;
 
-lobby.impostorWord =
-  randomPair.impostor;
+  const drawingDuration =
+    lobby.currentModifier ===
+    'speedDraw'
+      ? 10
+      : lobby.settings
+          .drawingTime;
 
-    console.log(
-      `[${code}] Manche ${roundNumber} → DRAWING`,
+  const roundNumber =
+    lobby.round;
+
+  for (
+    const player
+    of lobby.players
+  ) {
+    player.drawingFinished =
+      false;
+
+    player.drawing =
+      undefined;
+
+    player.voteFor =
+      undefined;
+  }
+
+  const randomIndex =
+    Math.floor(
+      Math.random() *
+        lobby.players.length,
     );
+
+  lobby.impostorId =
+    lobby.players[
+      randomIndex
+    ].id;
+
+  const randomPair =
+    WORD_PAIRS[
+      Math.floor(
+        Math.random() *
+          WORD_PAIRS.length,
+      )
+    ];
+
+  lobby.normalWord =
+    randomPair.normal;
+
+  lobby.impostorWord =
+    randomPair.impostor;
+
+  console.log(
+    `[${code}] Manche ${roundNumber} → DRAWING | ${lobby.currentModifier} | ${drawingDuration}s`,
+  );
+
+  this.server
+    .to(code)
+    .emit(
+      'round:started',
+      {
+        round:
+          lobby.round,
+
+        totalRounds:
+          lobby.totalRounds,
+
+        duration:
+          drawingDuration,
+
+        modifier:
+          lobby.currentModifier,
+      },
+    );
+
+  for (
+    const player
+    of lobby.players
+  ) {
+    const word =
+      player.id ===
+      lobby.impostorId
+        ? lobby.impostorWord
+        : lobby.normalWord;
 
     this.server
-      .to(code)
+      .to(player.id)
       .emit(
-        'round:started',
+        'round:word',
         {
-          round:
-            lobby.round,
+          word,
 
-          totalRounds:
-            lobby.totalRounds,
+          rule:
+            lobby.currentModifier,
 
-          duration: 30,
+          modifier:
+            lobby.currentModifier,
+
+          duration:
+            drawingDuration,
         },
       );
-
-    /*
-     * Envoi SECRET du mot.
-     *
-     * Chaque socket possède
-     * sa propre room socket.id.
-     */
-    for (
-      const player
-      of lobby.players
-    ) {
-      const word =
-        player.id ===
-        lobby.impostorId
-          ? lobby.impostorWord
-          : lobby.normalWord;
-
-      this.server
-        .to(player.id)
-        .emit(
-          'round:word',
-          {
-            word,
-
-            rule:
-              'Normal',
-          },
-        );
-    }
-
-    /*
-     * TIMER DESSIN :
-     * 30 secondes.
-     */
-    const timer =
-      setTimeout(() => {
-        this.drawingTimers.delete(
-          code,
-        );
-
-        const currentLobby =
-          this.lobbyService.getLobby(
-            code,
-          );
-
-        if (!currentLobby) {
-          return;
-        }
-
-        /*
-         * Protection contre
-         * un vieux timer.
-         */
-        if (
-          currentLobby.round !==
-          roundNumber
-        ) {
-          return;
-        }
-
-        if (
-          currentLobby.phase !==
-          'drawing'
-        ) {
-          return;
-        }
-
-        console.log(
-          `[${code}] Fin dessin manche ${roundNumber}`,
-        );
-
-        this.startReview(
-          code,
-        );
-      }, 30_000);
-
-    this.drawingTimers.set(
-      code,
-      timer,
-    );
   }
+
+  const timer =
+    setTimeout(() => {
+      this.drawingTimers.delete(
+        code,
+      );
+
+      const currentLobby =
+        this.lobbyService.getLobby(
+          code,
+        );
+
+      if (!currentLobby) {
+        return;
+      }
+
+      if (
+        currentLobby.round !==
+        roundNumber
+      ) {
+        return;
+      }
+
+      if (
+        currentLobby.phase !==
+        'drawing'
+      ) {
+        return;
+      }
+
+      console.log(
+        `[${code}] Fin dessin manche ${roundNumber}`,
+      );
+
+      this.startReview(
+        code,
+      );
+    }, drawingDuration * 1000);
+
+  this.drawingTimers.set(
+    code,
+    timer,
+  );
+}
 
   // =====================================================
   // REVIEW

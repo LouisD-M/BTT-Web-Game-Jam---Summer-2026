@@ -16,6 +16,23 @@ export type Player = {
   avatar?: string;
 };
 
+export type GameModifier =
+  | 'normal'
+  | 'twoColors'
+  | 'oneStroke'
+  | 'reverseMouse'
+  | 'speedDraw'
+  | 'blindDraw'
+  | 'sharedCanvas';
+
+export type GameSettings = {
+  rounds: number;
+
+  drawingTime: number;
+
+  modifiers: GameModifier[];
+};
+
 export type Lobby = {
   code: string;
   hostId: string;
@@ -32,4 +49,8 @@ export type Lobby = {
 
   normalWord?: string;
   impostorWord?: string;
+
+  settings: GameSettings;
+
+currentModifier?: GameModifier;
 };

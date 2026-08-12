@@ -1,40 +1,183 @@
-import { useState } from 'react';
+import {
+  useState,
+} from 'react';
+
+import {
+  socket,
+} from '../../socket/socket';
+
+import type {
+  GameModifier,
+  GameSettings,
+} from '../../types/game-settings';
 
 type GameSettingsModalProps = {
+  lobbyCode: string;
+
+  initialSettings?: GameSettings;
+
   onClose: () => void;
 };
 
+type ModifierDefinition = {
+  id: GameModifier;
+
+  label: string;
+
+  description: string;
+
+  emoji: string;
+};
+
+const MODIFIERS: ModifierDefinition[] = [
+  {
+    id: 'normal',
+    label: 'Normal',
+    description:
+      'Règles classiques',
+    emoji: '✏️',
+  },
+
+  {
+    id: 'twoColors',
+    label: 'Deux couleurs',
+    description:
+      'Seulement deux couleurs disponibles',
+    emoji: '🎨',
+  },
+
+  {
+    id: 'oneStroke',
+    label: 'Un seul trait',
+    description:
+      'Une fois le crayon levé, terminé',
+    emoji: '〰️',
+  },
+
+  {
+    id: 'reverseMouse',
+    label: 'Souris inversée',
+    description:
+      'Tes mouvements sont inversés',
+    emoji: '🔄',
+  },
+
+  {
+    id: 'speedDraw',
+    label: 'Speed Draw',
+    description:
+      'Seulement 10 secondes pour dessiner',
+    emoji: '⚡',
+  },
+
+  {
+    id: 'blindDraw',
+    label: "Dessin à l'aveugle",
+    description:
+      'Ton dessin devient invisible pendant la manche',
+    emoji: '🙈',
+  },
+
+  {
+    id: 'sharedCanvas',
+    label: 'Canvas partagé',
+    description:
+      'Tous les joueurs dessinent ensemble',
+    emoji: '👥',
+  },
+];
+
 export default function GameSettingsModal({
+  lobbyCode,
+  initialSettings,
   onClose,
 }: GameSettingsModalProps) {
-  const [rounds, setRounds] = useState(5);
-  const [drawingTime, setDrawingTime] = useState(120);
+  const [
+    rounds,
+    setRounds,
+  ] =
+    useState(
+      initialSettings?.rounds ??
+        5,
+    );
 
-  const [normal, setNormal] = useState(true);
-  const [twoColors, setTwoColors] = useState(false);
-  const [oneStroke, setOneStroke] = useState(false);
-  const [reverseMouse, setReverseMouse] = useState(false);
-  const [speedDraw, setSpeedDraw] = useState(false);
-  const [blindDraw, setBlindDraw] = useState(false);
-  const [sharedCanvas, setSharedCanvas] = useState(false);
+  const [
+    drawingTime,
+    setDrawingTime,
+  ] =
+    useState(
+      initialSettings
+        ?.drawingTime ??
+        30,
+    );
 
-  const saveSettings = () => {
-    console.log({
-      rounds,
-      drawingTime,
-      modifiers: {
-        normal,
-        twoColors,
-        oneStroke,
-        reverseMouse,
-        speedDraw,
-        blindDraw,
-        sharedCanvas,
+  const [
+    modifiers,
+    setModifiers,
+  ] =
+    useState<
+      GameModifier[]
+    >(
+      initialSettings
+        ?.modifiers ??
+        ['normal'],
+    );
+
+  const toggleModifier = (
+    modifier:
+      GameModifier,
+  ) => {
+    setModifiers(
+      (current) => {
+        if (
+          current.includes(
+            modifier,
+          )
+        ) {
+          /*
+           * Toujours au moins
+           * une règle active.
+           */
+          if (
+            current.length ===
+            1
+          ) {
+            return current;
+          }
+
+          return current.filter(
+            (item) =>
+              item !==
+              modifier,
+          );
+        }
+
+        return [
+          ...current,
+          modifier,
+        ];
       },
-    });
-
-    onClose();
+    );
   };
+
+  const saveSettings =
+    () => {
+      socket.emit(
+        'settings:update',
+        {
+          code:
+            lobbyCode,
+
+          settings: {
+            rounds,
+            drawingTime,
+            modifiers,
+          },
+        },
+      );
+
+      onClose();
+    };
 
   return (
     <div
@@ -52,8 +195,10 @@ export default function GameSettingsModal({
     >
       <div
         className="
+          max-h-[95vh]
           w-full
-          max-w-2xl
+          max-w-3xl
+          overflow-y-auto
           rounded-3xl
           border
           border-[#9b5cff]/50
@@ -82,13 +227,17 @@ export default function GameSettingsModal({
             </h2>
 
             <p className="mt-2 text-sm text-[#a5a8b8]">
-              Personnalise les manches et les règles du jeu.
+              Choisis les règles qui
+              pourront apparaître pendant
+              les manches.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={
+              onClose
+            }
             className="
               flex
               h-10
@@ -119,10 +268,18 @@ export default function GameSettingsModal({
 
             <select
               id="rounds"
-              value={rounds}
-              onChange={(event) =>
+              value={
+                rounds
+              }
+              onChange={(
+                event,
+              ) =>
                 setRounds(
-                  Number(event.target.value),
+                  Number(
+                    event
+                      .target
+                      .value,
+                  ),
                 )
               }
               className="
@@ -136,14 +293,23 @@ export default function GameSettingsModal({
                 text-white
                 outline-none
                 focus:border-[#9b5cff]
-                focus:ring-2
-                focus:ring-[#9b5cff]/20
               "
             >
-              <option value={3}>3 manches</option>
-              <option value={5}>5 manches</option>
-              <option value={7}>7 manches</option>
-              <option value={10}>10 manches</option>
+              <option value={3}>
+                3 manches
+              </option>
+
+              <option value={5}>
+                5 manches
+              </option>
+
+              <option value={7}>
+                7 manches
+              </option>
+
+              <option value={10}>
+                10 manches
+              </option>
             </select>
           </div>
 
@@ -157,10 +323,18 @@ export default function GameSettingsModal({
 
             <select
               id="drawingTime"
-              value={drawingTime}
-              onChange={(event) =>
+              value={
+                drawingTime
+              }
+              onChange={(
+                event,
+              ) =>
                 setDrawingTime(
-                  Number(event.target.value),
+                  Number(
+                    event
+                      .target
+                      .value,
+                  ),
                 )
               }
               className="
@@ -174,15 +348,27 @@ export default function GameSettingsModal({
                 text-white
                 outline-none
                 focus:border-[#36d8ff]
-                focus:ring-2
-                focus:ring-[#36d8ff]/20
               "
             >
-              <option value={10}>10 secondes</option>
-              <option value={20}>20 secondes</option>
-              <option value={30}>30 secondes</option>
-              <option value={45}>45 secondes</option>
-              <option value={60}>60 secondes</option>
+              <option value={10}>
+                10 secondes
+              </option>
+
+              <option value={20}>
+                20 secondes
+              </option>
+
+              <option value={30}>
+                30 secondes
+              </option>
+
+              <option value={45}>
+                45 secondes
+              </option>
+
+              <option value={60}>
+                60 secondes
+              </option>
             </select>
           </div>
         </div>
@@ -195,65 +381,57 @@ export default function GameSettingsModal({
           </h3>
 
           <p className="mb-4 text-sm text-[#8d91a5]">
-            Active ou désactive les variantes utilisées pendant la partie.
+            Une règle active sera tirée au
+            sort au début de chaque manche.
           </p>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <SettingToggle
-              label="Normal"
-              description="Règles classiques"
-              checked={normal}
-              onChange={setNormal}
-            />
-
-            <SettingToggle
-              label="Deux couleurs"
-              description="Palette limitée"
-              checked={twoColors}
-              onChange={setTwoColors}
-            />
-
-            <SettingToggle
-              label="Un seul trait"
-              description="Impossible de relâcher"
-              checked={oneStroke}
-              onChange={setOneStroke}
-            />
-
-            <SettingToggle
-              label="Souris inversée"
-              description="Mouvements inversés"
-              checked={reverseMouse}
-              onChange={setReverseMouse}
-            />
-
-            <SettingToggle
-              label="Speed Draw"
-              description="Temps réduit"
-              checked={speedDraw}
-              onChange={setSpeedDraw}
-            />
-
-            <SettingToggle
-              label="Dessin à l'aveugle"
-              description="Le canvas disparaît"
-              checked={blindDraw}
-              onChange={setBlindDraw}
-            />
-
-            <SettingToggle
-              label="Canvas partagé"
-              description="Plusieurs joueurs, un canvas"
-              checked={sharedCanvas}
-              onChange={setSharedCanvas}
-            />
+            {MODIFIERS.map(
+              (
+                modifier,
+              ) => (
+                <SettingToggle
+                  key={
+                    modifier.id
+                  }
+                  emoji={
+                    modifier.emoji
+                  }
+                  label={
+                    modifier.label
+                  }
+                  description={
+                    modifier.description
+                  }
+                  checked={modifiers.includes(
+                    modifier.id,
+                  )}
+                  onChange={() =>
+                    toggleModifier(
+                      modifier.id,
+                    )
+                  }
+                />
+              ),
+            )}
           </div>
         </div>
 
-        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <div
+          className="
+            mt-7
+            flex
+            flex-col-reverse
+            gap-3
+            sm:flex-row
+            sm:justify-end
+          "
+        >
           <button
             type="button"
-            onClick={onClose}
+            onClick={
+              onClose
+            }
             className="
               rounded-xl
               border
@@ -263,9 +441,7 @@ export default function GameSettingsModal({
               py-3
               font-semibold
               text-[#c7c9d8]
-              transition
               hover:bg-white/10
-              hover:text-white
             "
           >
             Annuler
@@ -273,7 +449,9 @@ export default function GameSettingsModal({
 
           <button
             type="button"
-            onClick={saveSettings}
+            onClick={
+              saveSettings
+            }
             className="
               rounded-xl
               bg-[#36d8ff]
@@ -281,7 +459,6 @@ export default function GameSettingsModal({
               py-3
               font-bold
               text-[#10131c]
-              transition
               hover:bg-[#67e5ff]
             "
           >
@@ -294,60 +471,99 @@ export default function GameSettingsModal({
 }
 
 type SettingToggleProps = {
+  emoji: string;
+
   label: string;
+
   description: string;
+
   checked: boolean;
-  onChange: (checked: boolean) => void;
+
+  onChange: () => void;
 };
 
 function SettingToggle({
+  emoji,
   label,
   description,
   checked,
   onChange,
 }: SettingToggleProps) {
   return (
-    <label
+    <button
+      type="button"
+      onClick={
+        onChange
+      }
       className={`
         flex
-        cursor-pointer
         items-center
         justify-between
         gap-4
         rounded-2xl
         border
         p-4
+        text-left
         transition
+
         ${
           checked
-            ? 'border-[#9b5cff]/40 bg-[#9b5cff]/10'
-            : 'border-white/10 bg-white/5'
+            ? `
+              border-[#9b5cff]/60
+              bg-[#9b5cff]/15
+            `
+            : `
+              border-white/10
+              bg-white/5
+              hover:bg-white/10
+            `
         }
       `}
     >
-      <div className="text-left">
-        <p className="font-semibold text-white">
-          {label}
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="text-2xl">
+          {emoji}
+        </div>
 
-        <p className="text-xs text-[#8d91a5]">
-          {description}
-        </p>
+        <div>
+          <p className="font-semibold text-white">
+            {label}
+          </p>
+
+          <p className="text-xs text-[#8d91a5]">
+            {description}
+          </p>
+        </div>
       </div>
 
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) =>
-          onChange(event.target.checked)
-        }
-        className="
-          h-5
-          w-5
-          cursor-pointer
-          accent-[#9b5cff]
-        "
-      />
-    </label>
+      <div
+        className={`
+          flex
+          h-6
+          w-6
+          shrink-0
+          items-center
+          justify-center
+          rounded-full
+          border
+          text-xs
+
+          ${
+            checked
+              ? `
+                border-[#9b5cff]
+                bg-[#9b5cff]
+                text-white
+              `
+              : `
+                border-white/20
+                text-transparent
+              `
+          }
+        `}
+      >
+        ✓
+      </div>
+    </button>
   );
 }

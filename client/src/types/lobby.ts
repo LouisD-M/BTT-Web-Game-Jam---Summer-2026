@@ -1,3 +1,7 @@
+import type {
+  GameSettings,
+} from './game-settings';
+
 export type GamePhase =
   | 'drawing'
   | 'voting'
@@ -18,6 +22,7 @@ export type Lobby = {
   code: string;
   hostId: string;
   players: Player[];
+  settings: GameSettings;
 
   state: 'waiting' | 'playing';
 

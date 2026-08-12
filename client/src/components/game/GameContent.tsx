@@ -4,6 +4,10 @@ import VotingPhase from './VotingPhase';
 import ResultsPhase from './ResultsPhase';
 import FinalRanking from './FinalRanking';
 
+import type {
+  GameModifier,
+} from '../../types/game-settings';
+
 type GamePhase =
   | 'drawing'
   | 'review'
@@ -40,8 +44,14 @@ type ResultData = {
   impostorId: string;
   normalWord: string;
   impostorWord: string;
-  votes: Record<string, number>;
-  playerWords: PlayerWord[];
+
+  votes: Record<
+    string,
+    number
+  >;
+
+  playerWords:
+    PlayerWord[];
 };
 
 type GameContentProps = {
@@ -55,12 +65,19 @@ type GameContentProps = {
   word: string;
   rule: string;
 
+  modifier: GameModifier;
+
+  drawingDuration: number;
+
   players: Player[];
+
   drawings: Drawing[];
 
-  results: ResultData | null;
+  results:
+    ResultData | null;
 
-  finalScores: ScorePlayer[];
+  finalScores:
+    ScorePlayer[];
 };
 
 export default function GameContent({
@@ -70,6 +87,8 @@ export default function GameContent({
   totalRounds,
   word,
   rule,
+  modifier,
+  drawingDuration,
   players,
   drawings,
   results,
@@ -85,7 +104,7 @@ export default function GameContent({
     >
       {phase !== 'finished' && (
         <header
-        className="
+          className="
             mb-5
             flex
             items-center
@@ -98,7 +117,7 @@ export default function GameContent({
             py-3
             shadow-xl
             backdrop-blur-md
-        "
+          "
         >
           <h1 className="text-2xl font-bold text-white">
             Draw Impostor
@@ -117,36 +136,59 @@ export default function GameContent({
 
       {phase === 'drawing' && (
         <DrawingPhase
-          lobbyCode={lobbyCode}
+          lobbyCode={
+            lobbyCode
+          }
           word={word}
           rule={rule}
+          modifier={
+            modifier
+          }
+          drawingDuration={
+            drawingDuration
+          }
         />
       )}
 
       {phase === 'review' && (
         <ReviewPhase
-          drawings={drawings}
+          drawings={
+            drawings
+          }
         />
       )}
 
       {phase === 'voting' && (
         <VotingPhase
-          lobbyCode={lobbyCode}
-          players={players}
-          drawings={drawings}
+          lobbyCode={
+            lobbyCode
+          }
+          players={
+            players
+          }
+          drawings={
+            drawings
+          }
         />
       )}
 
-      {phase === 'results' && results && (
-        <ResultsPhase
-          results={results}
-        />
-      )}
+      {phase === 'results' &&
+        results && (
+          <ResultsPhase
+            results={
+              results
+            }
+          />
+        )}
 
       {phase === 'finished' && (
         <FinalRanking
-          scores={finalScores}
-          lobbyCode={lobbyCode}
+          scores={
+            finalScores
+          }
+          lobbyCode={
+            lobbyCode
+          }
         />
       )}
     </div>

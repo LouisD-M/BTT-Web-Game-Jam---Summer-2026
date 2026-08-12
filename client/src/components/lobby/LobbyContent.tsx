@@ -208,11 +208,15 @@ const saveAvatar = (
       )}
 
       {settingsOpen && (
-        <GameSettingsModal
-          onClose={() =>
-            setSettingsOpen(false)
-          }
-        />
+<GameSettingsModal
+  lobbyCode={lobby.code}
+  initialSettings={
+    lobby.settings
+  }
+  onClose={() =>
+    setSettingsOpen(false)
+  }
+/>
       )}
 
       {avatarOpen && (

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
 import type {
+  GameModifier,
+  GameSettings,
   Lobby,
   Player,
 } from './lobby.types';
@@ -27,19 +29,30 @@ export class LobbyService {
       score: 0,
     };
 
-    const lobby: Lobby = {
-      code,
-      hostId: socketId,
+const lobby: Lobby = {
+  code,
+  hostId: socketId,
 
-      players: [
-        player,
-      ],
+  players: [
+    player,
+  ],
 
-      state: 'waiting',
+  state: 'waiting',
 
-      round: 0,
-      totalRounds: 5,
-    };
+  round: 0,
+
+  totalRounds: 5,
+
+  settings: {
+    rounds: 5,
+
+    drawingTime: 30,
+
+    modifiers: [
+      'normal',
+    ],
+  },
+};
 
     this.lobbies.set(
       code,
@@ -190,6 +203,73 @@ export class LobbyService {
 
     return null;
   }
+
+updateSettings(
+  code: string,
+  socketId: string,
+  settings: GameSettings,
+): Lobby | null {
+  const lobby =
+    this.lobbies.get(code);
+
+  if (!lobby) {
+    return null;
+  }
+
+  if (
+    lobby.hostId !==
+    socketId
+  ) {
+    return null;
+  }
+
+  if (
+    lobby.state !==
+    'waiting'
+  ) {
+    return null;
+  }
+
+  const rounds =
+    Math.min(
+      10,
+      Math.max(
+        3,
+        settings.rounds,
+      ),
+    );
+
+  const allowedTimes = [
+    10,
+    20,
+    30,
+    45,
+    60,
+  ];
+
+  const drawingTime =
+    allowedTimes.includes(
+      settings.drawingTime,
+    )
+      ? settings.drawingTime
+      : 30;
+
+const modifiers: GameModifier[] =
+  settings.modifiers.length > 0
+    ? settings.modifiers
+    : ['normal'];
+
+  lobby.settings = {
+    rounds,
+    drawingTime,
+    modifiers,
+  };
+
+  lobby.totalRounds =
+    rounds;
+
+  return lobby;
+}
 
   private generateCode(): string {
     let code: string;

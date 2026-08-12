@@ -5,18 +5,30 @@ import ShapeOptions from './ShapeOptions';
 import ToolButton from './ToolButton';
 
 import type {
+  GameModifier,
+} from '../../../types/game-settings';
+
+import type {
   DrawingTool,
 } from './types';
 
 type DrawingToolbarProps = {
   mode?: 'game' | 'avatar';
 
+  modifier?: GameModifier;
+
   tool: DrawingTool;
+
   color: string;
+
   brushSize: number;
+
   opacity: number;
+
   filled: boolean;
+
   canUndo: boolean;
+
   canRedo: boolean;
 
   onToolChange: (
@@ -40,12 +52,15 @@ type DrawingToolbarProps = {
   ) => void;
 
   onUndo: () => void;
+
   onRedo: () => void;
+
   onClear: () => void;
 };
 
 export default function DrawingToolbar({
   mode = 'game',
+  modifier = 'normal',
   tool,
   color,
   brushSize,
@@ -65,9 +80,21 @@ export default function DrawingToolbar({
   const isAvatar =
     mode === 'avatar';
 
+  const isOneStroke =
+    mode === 'game' &&
+    modifier ===
+      'oneStroke';
+
+  const isTwoColors =
+    mode === 'game' &&
+    modifier ===
+      'twoColors';
+
   const shapeTool =
-    tool === 'rectangle' ||
-    tool === 'circle';
+    tool ===
+      'rectangle' ||
+    tool ===
+      'circle';
 
   return (
     <div
@@ -82,14 +109,87 @@ export default function DrawingToolbar({
         backdrop-blur-md
       "
     >
+      {/* RÈGLE SPÉCIALE */}
+
+      {isTwoColors && (
+        <div
+          className="
+            flex
+            items-center
+            justify-between
+            gap-3
+            border-b
+            border-[#9b5cff]/20
+            bg-[#9b5cff]/10
+            px-4
+            py-3
+          "
+        >
+          <div>
+            <p
+              className="
+                text-sm
+                font-bold
+                text-white
+              "
+            >
+              🎨 Deux couleurs
+            </p>
+
+            <p
+              className="
+                text-xs
+                text-[#a5a8b8]
+              "
+            >
+              Seulement noir et
+              violet sont disponibles
+              pendant cette manche.
+            </p>
+          </div>
+
+          <span
+            className="
+              rounded-full
+              border
+              border-[#9b5cff]/30
+              bg-[#9b5cff]/10
+              px-3
+              py-1
+              text-xs
+              font-bold
+              text-[#cdb8ff]
+            "
+          >
+            MODE SPÉCIAL
+          </span>
+        </div>
+      )}
+
       {/* OUTILS */}
-      <div className="flex flex-wrap gap-2 p-4">
+
+      <div
+        className="
+          flex
+          flex-wrap
+          gap-2
+          p-4
+        "
+      >
         <ToolButton
           label="✏️ Crayon"
           title="Crayon (B)"
-          active={tool === 'pen'}
+          active={
+            tool === 'pen'
+          }
+          disabled={
+            isOneStroke &&
+            tool !== 'pen'
+          }
           onClick={() =>
-            onToolChange('pen')
+            onToolChange(
+              'pen',
+            )
           }
         />
 
@@ -97,7 +197,11 @@ export default function DrawingToolbar({
           label="🧽 Gomme"
           title="Gomme (E)"
           active={
-            tool === 'eraser'
+            tool ===
+            'eraser'
+          }
+          disabled={
+            isOneStroke
           }
           onClick={() =>
             onToolChange(
@@ -112,6 +216,9 @@ export default function DrawingToolbar({
             title="Ligne (L)"
             active={
               tool === 'line'
+            }
+            disabled={
+              isOneStroke
             }
             onClick={() =>
               onToolChange(
@@ -128,6 +235,9 @@ export default function DrawingToolbar({
             tool ===
             'rectangle'
           }
+          disabled={
+            isOneStroke
+          }
           onClick={() =>
             onToolChange(
               'rectangle',
@@ -139,7 +249,11 @@ export default function DrawingToolbar({
           label="○ Cercle"
           title="Cercle (C)"
           active={
-            tool === 'circle'
+            tool ===
+            'circle'
+          }
+          disabled={
+            isOneStroke
           }
           onClick={() =>
             onToolChange(
@@ -153,7 +267,11 @@ export default function DrawingToolbar({
             label="➜ Flèche"
             title="Flèche (A)"
             active={
-              tool === 'arrow'
+              tool ===
+              'arrow'
+            }
+            disabled={
+              isOneStroke
             }
             onClick={() =>
               onToolChange(
@@ -167,7 +285,11 @@ export default function DrawingToolbar({
           label="💨 Spray"
           title="Spray"
           active={
-            tool === 'spray'
+            tool ===
+            'spray'
+          }
+          disabled={
+            isOneStroke
           }
           onClick={() =>
             onToolChange(
@@ -183,6 +305,9 @@ export default function DrawingToolbar({
             tool ===
             'highlighter'
           }
+          disabled={
+            isOneStroke
+          }
           onClick={() =>
             onToolChange(
               'highlighter',
@@ -195,6 +320,9 @@ export default function DrawingToolbar({
           title="Remplissage (F)"
           active={
             tool === 'fill'
+          }
+          disabled={
+            isOneStroke
           }
           onClick={() =>
             onToolChange(
@@ -210,6 +338,9 @@ export default function DrawingToolbar({
             tool ===
             'eyedropper'
           }
+          disabled={
+            isOneStroke
+          }
           onClick={() =>
             onToolChange(
               'eyedropper',
@@ -224,6 +355,9 @@ export default function DrawingToolbar({
             active={
               tool === 'text'
             }
+            disabled={
+              isOneStroke
+            }
             onClick={() =>
               onToolChange(
                 'text',
@@ -234,6 +368,7 @@ export default function DrawingToolbar({
       </div>
 
       {/* OPTIONS */}
+
       <div
         className="
           flex
@@ -253,9 +388,20 @@ export default function DrawingToolbar({
           onColorChange={
             onColorChange
           }
+          limited={
+            isTwoColors
+          }
         />
 
-        <div className="hidden h-8 w-px bg-white/10 lg:block" />
+        <div
+          className="
+            hidden
+            h-8
+            w-px
+            bg-white/10
+            lg:block
+          "
+        />
 
         <BrushSizePicker
           value={
@@ -267,23 +413,29 @@ export default function DrawingToolbar({
         />
 
         <OpacityPicker
-          value={opacity}
+          value={
+            opacity
+          }
           onChange={
             onOpacityChange
           }
         />
 
-        {shapeTool && (
-          <ShapeOptions
-            filled={filled}
-            onFilledChange={
-              onFilledChange
-            }
-          />
-        )}
+        {shapeTool &&
+          !isOneStroke && (
+            <ShapeOptions
+              filled={
+                filled
+              }
+              onFilledChange={
+                onFilledChange
+              }
+            />
+          )}
       </div>
 
       {/* ACTIONS */}
+
       <div
         className="
           flex
@@ -298,12 +450,23 @@ export default function DrawingToolbar({
         "
       >
         {!isAvatar ? (
-          <p className="text-xs text-[#73778b]">
-            Ctrl+Z annuler ·
-            Ctrl+Y rétablir
+          <p
+            className="
+              text-xs
+              text-[#73778b]
+            "
+          >
+            {isOneStroke
+              ? '〰️ Un seul trait autorisé'
+              : 'Ctrl+Z annuler · Ctrl+Y rétablir'}
           </p>
         ) : (
-          <p className="text-xs text-[#73778b]">
+          <p
+            className="
+              text-xs
+              text-[#73778b]
+            "
+          >
             Dessine ton avatar
           </p>
         )}
@@ -313,7 +476,8 @@ export default function DrawingToolbar({
             label="↶"
             title="Annuler"
             disabled={
-              !canUndo
+              !canUndo ||
+              isOneStroke
             }
             onClick={
               onUndo
@@ -324,7 +488,8 @@ export default function DrawingToolbar({
             label="↷"
             title="Rétablir"
             disabled={
-              !canRedo
+              !canRedo ||
+              isOneStroke
             }
             onClick={
               onRedo
@@ -333,6 +498,14 @@ export default function DrawingToolbar({
 
           <ToolButton
             label="🗑 Tout effacer"
+            title={
+              isOneStroke
+                ? 'Impossible en mode Un seul trait'
+                : 'Tout effacer'
+            }
+            disabled={
+              isOneStroke
+            }
             danger
             onClick={
               onClear
