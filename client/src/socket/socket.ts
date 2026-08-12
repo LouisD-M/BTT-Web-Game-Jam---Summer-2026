@@ -1,11 +1,9 @@
 import { io } from 'socket.io-client';
 
-export const socket = io('http://localhost:9025');
+const API_URL =
+  import.meta.env.VITE_API_URL ??
+  'http://localhost:9025';
 
-socket.on('connect', () => {
-  console.log('SOCKET OK:', socket.id);
-});
-
-socket.on('connect_error', (error) => {
-  console.error('SOCKET ERROR:', error.message);
+export const socket = io(API_URL, {
+  transports: ['websocket', 'polling'],
 });
